@@ -1,52 +1,79 @@
-# godot-cpp template
-This repository serves as a quickstart template for GDExtension development with Godot 4.0+.
+# GD Bytecode Compiler
 
-## Contents
-* Preconfigured source files for C++ development of the GDExtension ([src/](./src/))
-* An empty Godot project in [demo/](./demo), to test the GDExtension
-* godot-cpp as a submodule (`godot-cpp/`)
-* GitHub Issues template ([.github/ISSUE_TEMPLATE.yml](./.github/ISSUE_TEMPLATE.yml))
-* GitHub CI/CD workflows to publish your library packages when creating a release ([.github/workflows/builds.yml](./.github/workflows/builds.yml))
-* An SConstruct file with various functions, such as boilerplate for [Adding documentation](https://docs.godotengine.org/en/stable/tutorials/scripting/cpp/gdextension_docs_system.html)
+[![Godot Engine 4.3](https://img.shields.io/badge/Godot_Engine-4.x-blue)](https://godotengine.org/)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue)](LICENSE.md)
 
-## Usage - Template
+>[!NOTE]
+>This is the update to the Ayzurus work repository for Godot version >= 4.5
+>
+>For Godot version <= 4.4, use the other branch in this repository.
 
-To use this template, log in to GitHub and click the green "Use this template" button at the top of the repository page. This will let you create a copy of this repository with a clean git history.
+This is a port of the [Godot engine's GDscript tokenizer](https://github.com/godotengine/godot/tree/master/modules/gdscript) into GDExtension format to be freely called upon from GDscript itself.
 
-To get started with your new GDExtension, do the following:
+The core idea is to allow the binary tokenization from Godot 4.5 to be called from any point of the editor or even in-game, allowing to compile text scripts in text format into binary tokens at any point.
 
-* clone your repository to your local computer
-* initialize the godot-cpp git submodule via `git submodule update --init`
-* change the name of the compiled library file inside the [SConstruct](./SConstruct) file by modifying the `libname` string.
-  * change the paths of the to be loaded library name inside the [demo/bin/example.gdextension](./demo/bin/example.gdextension) file, by replacing `EXTENSION-NAME` with the name you chose for `libname`.
-* change the `entry_symbol` string inside [demo/bin/example.gdextension](./demo/bin/example.gdextension) file.
-  * rename the `example_library_init` function in [src/register_types.cpp](./src/register_types.cpp) to the same name you chose for `entry_symbol`.
-* change the name of the `demo/bin/example.gdextension` file
+Since the GDExtension API is not an exact replica of the engine's code, there are a few adaptations for the tokenizer to work with the equivalent source available on the GDExtension side.
 
-Now, you can build the project with the following command:
+## Usage
 
-```shell
-scons
+Start by either building or downloading the pre-packaged version and adding it to the intended project.
+
+The addon will add an object called `BytecodeCompiler` which, when instantiated, will allow to compile a `GDScript` object or its source code directly into a `PackedByteArray` of bytecode.
+
+It is also possible to compress the binary tokens with zstd, just like in the exporting options, using the `compression` flag argument.
+
+- `BytecodeCompiler.UNCOMPRESSED` will have the same result as the export option `Binary tokens (faster loading)`.
+- `BytecodeCompiler.COMPRESSED` will have the same result as the export option `Compressed binary tokens (smaller files)`.
+
+By default, the bytecode compilation will be uncompressed.
+
+Compilling from any GDScript or source code:
+
+```gdscript
+# Instantiate the compiler.
+var compiler := BytecodeCompiler.new()
+
+# Compile the current script object.
+var bytes := compiler.compile_from_script(get_script())
+
+# Compile the current script object's source code.
+var script := get_script()
+bytes = compiler.compile_from_string(script.source_code)
+
+# In case we wish to compress later, instead of during compilation.
+bytes = compiler.compress(bytes)
 ```
 
-If the build command worked, you can test it with the [demo](./demo) project. Import it into Godot, open it, and launch the main scene. You should see it print the following line in the console:
+## Building
 
-```
-Type: 24
-```
+Requires [Scons](https://scons.org/) to build.
 
-### Configuring an IDE
-You can develop your own extension with any text editor and by invoking scons on the command line, but if you want to work with an IDE (Integrated Development Environment), you can use a compilation database file called `compile_commands.json`. Most IDEs should automatically identify this file, and self-configure appropriately.
-To generate the database file, you can run one of the following commands in the project root directory:
-```shell
-# Generate compile_commands.json while compiling
-scons compiledb=yes
+First, run `git submodule update --init --recursive --force` to initialize the godot-cpp submodule.
 
-# Generate compile_commands.json without compiling
-scons compiledb=yes compile_commands.json
-```
+Run Scons on the root to generate the libraries on both the `demo` and `bin` directories:
 
-## Usage - Actions
+`scons platform=<windows/linux/android/macos/ios> target=<target_debug/target_release/editor>`
 
-This repository comes with a GitHub action that builds the GDExtension for cross-platform use. It triggers automatically for each pushed change. You can find and edit it in [builds.yml](.github/workflows/builds.yml).
-After a workflow run is complete, you can find the file `godot-cpp-template.zip` on the `Actions` tab on GitHub.
+## Limitations
+
+### Pre-compilled packages do not include MacOS or iOS
+
+This is due to the required environment to compile for this systems, which I don't currently have, so compillation of the library, on my part, is only achieveble for Windows, Linux and Android.
+
+It is still possible to have the extension working for this systems provided that you do the compillation yourself.
+
+### Decompilling
+
+This addon is only aimed at the compilation aspect assuming the scripts will always be used inside the engine, which means that decompilling is not necessary, since it is done by the engine when the file is `load()` or `preload()`, whence most decode/decompilling code was not ported.
+
+## Demo project
+
+The demo project includes a pre-exported script in both compressed and uncompressed binary token formats.
+
+When run the project showcases basic statistics regarding the expected binary tokens of the test script, and when the compillation is called, it updates with the statistics of the actual result produced by the execution of the `BytecodeCompiler`.
+
+There are also options to replace the scripts in the scene and run both binary token versions to validate manually if they perform correctly.
+
+The test scene can be replaced with anything and works just as a placeholder to validate the results of the compiller.
+
+In case of replacing the test scene, don't forget to export the original in the engine as binary tokens and replace both `test/expected_uncompressed.gdc` and `test/expected_compressed.gdc` in order to have a valid comparison with the new scene.

@@ -20,10 +20,36 @@
  * SOFTWARE.
  */
 
-#ifndef EXAMPLE_REGISTER_TYPES_H
-#define EXAMPLE_REGISTER_TYPES_H
+#ifndef BYTECODE_COMPILER_H
+#define BYTECODE_COMPILER_H
 
-void initialize_gdbc();
-void uninitialize_gdbc();
+#include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/classes/script.hpp>
+#include <godot_cpp/variant/packed_byte_array.hpp>
+#include <godot_cpp/variant/string.hpp>
 
-#endif // EXAMPLE_REGISTER_TYPES_H
+namespace godot {
+
+class BytecodeCompiler : public RefCounted {
+	GDCLASS(BytecodeCompiler, RefCounted)
+
+protected:
+	static void _bind_methods();
+
+public:
+	enum CompressionMode { UNCOMPRESSED, COMPRESSED };
+
+	PackedByteArray compile_from_string(
+			const String &source_code, CompressionMode compression = UNCOMPRESSED);
+	PackedByteArray compile_from_script(
+			const Script *source_script, CompressionMode compression = UNCOMPRESSED);
+	PackedByteArray compress(const PackedByteArray bytecode);
+	BytecodeCompiler() = default;
+	~BytecodeCompiler() override = default;
+};
+
+} //namespace godot
+
+VARIANT_ENUM_CAST(BytecodeCompiler::CompressionMode);
+
+#endif // BYTECODE_COMPILER_H
