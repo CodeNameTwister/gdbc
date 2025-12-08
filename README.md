@@ -6,7 +6,7 @@
 >[!NOTE]
 >This is the update to the Ayzurus work repository for Godot version >= 4.5
 >
->For Godot version <= 4.4, use the other branch in this repository.
+>For Godot version <= 4.4, use the other branch in this repository or download directly [GDBC Ayzurus Release v1.1.0](https://github.com/Ayzurus/gdbc/releases/tag/v1.1.0).
 
 This is a port of the [Godot engine's GDscript tokenizer](https://github.com/godotengine/godot/tree/master/modules/gdscript) into GDExtension format to be freely called upon from GDscript itself.
 
