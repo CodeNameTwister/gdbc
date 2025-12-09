@@ -55,13 +55,6 @@ Run Scons on the root to generate the libraries on both the `demo` and `bin` dir
 `scons platform=<windows/linux/android/macos/ios> target=<target_debug/target_release/editor>`
 
 ## Limitations
-
-### Pre-compilled packages do not include MacOS or iOS
-
-This is due to the required environment to compile for this systems, which I don't currently have, so compillation of the library, on my part, is only achieveble for Windows, Linux and Android.
-
-It is still possible to have the extension working for this systems provided that you do the compillation yourself.
-
 ### Decompilling
 
 This addon is only aimed at the compilation aspect assuming the scripts will always be used inside the engine, which means that decompilling is not necessary, since it is done by the engine when the file is `load()` or `preload()`, whence most decode/decompilling code was not ported.
