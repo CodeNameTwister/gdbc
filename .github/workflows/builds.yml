@@ -1,6 +1,6 @@
 # branches:
 #   - "main"
-   
+
 name: 🛠️ Builds
 on:
   workflow_dispatch:
@@ -103,6 +103,20 @@ jobs:
             name: 🍏 iOS (arm64) All
             runner: macos-latest
             platform: ios
+          - identifier: web-debug
+            name: 🌐 Web Debug
+            runner: ubuntu-24.04
+            target: template_debug
+            dev_build: yes
+            platform: web
+            arch: wasm32
+          - identifier: web-release
+            name: 🌐 Web Release
+            runner: ubuntu-24.04
+            target: template_release
+            dev_build: no
+            platform: web
+            arch: wasm32
     steps:
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -129,6 +143,12 @@ jobs:
           submodules: recursive
           ref: "godot-4.5-stable"
 
+      - name: (Web) Install Emscripten
+        if: ${{ matrix.platform == 'web' }}
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.64
+
       - name: (Windows) Install mingw64
         if: ${{ matrix.platform == 'windows' }}
         uses: CodeNameTwister/setup-mingw@master
@@ -145,7 +165,6 @@ jobs:
         with:
           ndk-version: r28b
           link-to-sdk: true
-          cmdline-tools: latest
 
       - name: Setup build cache
         uses: actions/cache@v4
@@ -156,7 +175,6 @@ jobs:
             ${{ matrix.identifier }}
         continue-on-error: true
 
-
       - name: (WIN) Compile extension
         shell: sh
         if: ${{ matrix.platform == 'windows'}}
@@ -165,15 +183,35 @@ jobs:
           SCONS_CACHE_LIMIT: 7168
         run: |
           scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' dev_build='${{ matrix.dev_build }}' use_mingw='yes' warn_as_error='no'
-      - name: Compile extension
+
+      - name: (Web) Compile extension
         shell: sh
-        if: ${{ matrix.platform != 'ios' &&  matrix.platform != 'windows'}}
+        if: ${{ matrix.platform == 'web' }}
+        env:
+          SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
+          SCONS_CACHE_LIMIT: 7168
+        run: |
+          scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='wasm32' dev_build='${{ matrix.dev_build }}'
+
+      - name: (Android) Compile extension
+        shell: sh
+        if: ${{ matrix.platform == 'android' }}
         env:
           SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
           SCONS_CACHE_LIMIT: 7168
           ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
           scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' dev_build='${{ matrix.dev_build }}'
+
+      - name: (Linux/macOS) Compile extension
+        shell: sh
+        if: ${{ matrix.platform == 'linux' || matrix.platform == 'macos' }}
+        env:
+          SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
+          SCONS_CACHE_LIMIT: 7168
+        run: |
+          scons target='${{ matrix.target }}' platform='${{ matrix.platform }}' arch='${{ matrix.arch }}' dev_build='${{ matrix.dev_build }}'
+
       - name: (iOS) Compile extension
         shell: sh
         if: ${{ matrix.platform == 'ios' }}
@@ -234,6 +272,9 @@ jobs:
           - identifier: ios
             name: 🍏 iOS
             matchpattern: ios
+          - identifier: web
+            name: 🌐 Web
+            matchpattern: web
 
     steps:
       - name: Merge artifacts for platform
@@ -293,6 +334,11 @@ jobs:
         with:
           name: ${{ github.event.repository.name }}-ios-${{ github.sha }}
           path: artifact-ios
+      - name: Download 'web' artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-web-${{ github.sha }}
+          path: artifact-web
 
       - name: Zip 'all' artifact
         run: |
@@ -324,6 +370,11 @@ jobs:
           cd artifact-ios
           zip -9 -r ../${{ github.event.repository.name }}-ios-${{ github.sha }}.zip .
           cd ..
+      - name: Zip 'web' artifact
+        run: |
+          cd artifact-web
+          zip -9 -r ../${{ github.event.repository.name }}-web-${{ github.sha }}.zip .
+          cd ..
 
       - name: Create draft release and upload assets
         uses: softprops/action-gh-release@v2.5.0
@@ -338,3 +389,4 @@ jobs:
             ${{github.event.repository.name}}-linux-${{ github.sha }}.zip
             ${{github.event.repository.name}}-windows-${{ github.sha }}.zip
             ${{github.event.repository.name}}-ios-${{ github.sha }}.zip
+            ${{github.event.repository.name}}-web-${{ github.sha }}.zip
