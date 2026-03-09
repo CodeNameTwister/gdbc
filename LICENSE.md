@@ -1,6 +1,7 @@
 MIT License
 
 Copyright (c) 2024 Ayzurus
+
 Copyright (c) 2025-2026 Twister
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
